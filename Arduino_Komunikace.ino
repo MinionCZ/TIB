@@ -1,89 +1,150 @@
-int piny[8];
-bool blik = false;
-bool sviti = false;
-uint32_t posledniMillis = millis();
-String hi = "Ahoj";
+#include <LiquidCrystal.h>
+#define podsviceni 7
+#define potenciometr A0
+LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
+long posledniMillis = 0;
+struct Hodiny {
+  byte hodina;
+  byte minuta;
+  byte sekunda;
+} cas;
 
 void setup() {
-  // put your setup code here, to run once:
-  for (int i = 0; i < 8; i++) {
-    piny[i] = i + 6;
-    pinMode(piny[i], OUTPUT);
-  }
-  Serial.begin(9600);
-  Serial.println(hi);
+  Serial.begin(115200);
+  pinMode(7, OUTPUT);
+  lcd.begin(16, 2);
+  cas.hodina = 17;
+  cas.minuta = 47;
+  cas.sekunda = 0;
+  digitalWrite(7, HIGH);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  String s = prectiString();
-  if(!s.equals("")){
-    Serial.println(s);
-    vyhodnot(s);
-  }
-  blikej();
+  lcd.setCursor(3, 0);
+  lcd.print(cas.hodina);
+  lcd.print(":");
+  lcd.print(cas.minuta);
+  lcd.print(":");
+  lcd.print(cas.sekunda);
+  tik();
+  nastaveni();
   delay(1);
 }
-void rozsvit(uint8_t pocetLedek) {
-  for (uint16_t i = 0; i < 8; i++) {
-    digitalWrite(piny[i], i < pocetLedek);
-  }
-}
-void zhasni() {
-  for (int i = 0; i < 8; i++) {
-    digitalWrite(piny[i], LOW);
-  }
-}
-void blikej() {
-  if (!blik) {
-    return;
-  }
-  if (abs(millis() - posledniMillis) >= 1000) {
+void tik() {
+  if (millis() - posledniMillis >= 1000) {
     posledniMillis = millis();
-    sviti = !sviti;
-    if (sviti) {
-      rozsvit(8);
+    cas.sekunda++;
+    if (cas.sekunda == 60) {
+      cas.minuta++;
+      cas.sekunda = 0;
+      if (cas.minuta == 60) {
+        cas.minuta = 0;
+        cas.hodina++;
+        if (cas.hodina == 24) {
+          cas.hodina = 0;
+        }
+      }
+    }
+  }
+}
+void nastaveni() {
+  if (Serial.available() == 0) {
+    return;
+  }
+  String s = "";
+  while (Serial.available() > 0) {
+    s += (char) Serial.read();
+    delay(3);
+  }
+  int vysledek = over(s);
+  switch (vysledek) {
+    case -1:
+      Serial.println("Error");
+      return;
+    case 1:
+      setRozcestnik(s);
+      break;
+    case 2:
+      Serial.println(vratInfo(s));
+      break;
+    default:
+      break;
+  }
+
+}
+/*
+   param prikaz - textovy retezec od uzivatele
+   return pokud je prikaz nespravny -> -1
+          pokud je prikaz set -> 1
+          pokud je prikaz get -> 2
+*/
+int over(String prikaz) {
+  if (prikaz.length() >= 3) {
+    String substr = prikaz.substring(0, 3);
+    if (substr.equals("set")) {
+      return 1;
+    } else if (substr.equals("get")) {
+      return 2;
     } else {
-      zhasni();
+      return -1;
     }
+  } else {
+    return -1;
   }
 }
-String prectiString(){
-  if(Serial.available() == 0){
-    return "";
+/*
+   param prikaz - string co se ma udelat
+   return String -> pokud je prikaz time -> cas
+                 -> pokud je prikaz text -> text
+                 -> pokud neco jineho -> error
+*/
+
+String vratInfo(String prikaz) {
+  String substr = prikaz.substring(3);
+  if (substr.length() != 4) {
+    return "Error";
   }
-  String packet = "";
-  int pocitadlo = 0;
-  while(pocitadlo<Serial.available()){
-    pocitadlo = Serial.available();
-    delay(2);
+  if (substr.equals("text")) {
+    return "Donde esta la biblioteca?";
+  } else if (substr.equals("time")) {
+    String tim = "";
+    tim += cas.hodina;
+    tim += ":";
+    tim += cas.minuta;
+    tim += ":";
+    tim += cas.sekunda;
+    return tim;
+  } else {
+    return "Error";
   }
-  while(Serial.available()!=0){
-    packet += (char)Serial.read();
-  }
-  return packet;
+
 }
-void vyhodnot(String prikaz){
-  if(prikaz.length()<2){
-    Serial.println("Error");
-    return;
-  }
-  if(prikaz.length()==2 && prikaz.equals("AT")){
-    Serial.println("OK");
-    return;
-  }
-  String atHlavicka = prikaz.substring(0, 3);
-  if(atHlavicka.equals("AT+")){
-    prikaz.remove(0,3);
-    if(prikaz.equals("ON")){
-      rozsvit(8);
-    }else if(prikaz.equals("OFF")){
-      zhasni();
-    }
-    
+/*
+ * param String prikaz - obsahuje informace
+ * format casu 10:10:10 - hh:mm:ss
+ */
+void nastavCas(String prikaz){
+  String casString = prikaz.substring(0, 2);
+  cas.hodina = casString.toInt();
+  prikaz.remove(0, 3);
+  casString = prikaz.substring(0, 2);
+  cas.minuta = casString.toInt();
+  prikaz.remove(0, 3);
+  cas.sekunda = prikaz.toInt();
+}
+/*
+ *param String prikaz -> prikaz co delat 
+ */
+void setRozcestnik(String prikaz){
+  prikaz.remove(0,3);
+  String nastaveni = prikaz.substring(0,4);
+  if(nastaveni.equals("time")){
+    prikaz.remove(0,4);
+    nastavCas(prikaz);
+  }else if(nastaveni.equals("text")){
+    //zavolej nastav text
   }else{
     Serial.println("Error");
   }
-  
   
 }
