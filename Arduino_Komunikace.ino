@@ -141,6 +141,7 @@ void setRozcestnik(String prikaz){
   prikaz.remove(0,3);
   String nastaveni = prikaz.substring(0,4);
   prikaz.remove(0,5);
+  lcd.clear();
   if(nastaveni.equals("time")){
     nastavCas(prikaz);
   }else if(nastaveni.equals("text")){
