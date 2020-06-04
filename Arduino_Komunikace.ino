@@ -4,6 +4,9 @@
 LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 long posledniMillis = 0;
 String text = "Donde esta la biblioteca?";
+long posledniPosunuti = 0;
+String zobrazenyText = "";
+long prvniPismeno = 0;
 struct Hodiny {
   byte hodina;
   byte minuta;
@@ -154,5 +157,26 @@ void ukazText(){
   if(text.length()<=16){
     lcd.setCursor(0,1);
     lcd.print(text);
+  }else{
+    if(millis() - posledniPosunuti >= 1000){
+      posledniPosunuti = millis();
+      lcd.clear();
+      int j = 0;
+     for(int i = 0; i<15;i++){
+      if(prvniPismeno + i < text.length()){
+        zobrazenyText += text.charAt(prvniPismeno + i);
+      }else{
+        zobrazenyText += text.charAt(j);
+        j++;
+      }
+     }
+     if(prvniPismeno < text.length()){
+      prvniPismeno++;
+     }else{
+      prvniPismeno = 0;
+     }
+    }
+    lcd.setCursor(0,1);
+    lcd.print(zobrazenyText);
   }
 }
