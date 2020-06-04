@@ -3,6 +3,7 @@
 #define potenciometr A0
 LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 long posledniMillis = 0;
+String text = "Donde esta la biblioteca?";
 struct Hodiny {
   byte hodina;
   byte minuta;
@@ -28,6 +29,7 @@ void loop() {
   lcd.print(cas.sekunda);
   tik();
   nastaveni();
+  ukazText();
   delay(1);
 }
 void tik() {
@@ -105,7 +107,7 @@ String vratInfo(String prikaz) {
     return "Error";
   }
   if (substr.equals("text")) {
-    return "Donde esta la biblioteca?";
+    return text;
   } else if (substr.equals("time")) {
     String tim = "";
     tim += cas.hodina;
@@ -138,13 +140,18 @@ void nastavCas(String prikaz){
 void setRozcestnik(String prikaz){
   prikaz.remove(0,3);
   String nastaveni = prikaz.substring(0,4);
+  prikaz.remove(0,5);
   if(nastaveni.equals("time")){
-    prikaz.remove(0,4);
     nastavCas(prikaz);
   }else if(nastaveni.equals("text")){
-    //zavolej nastav text
+    text = prikaz;
   }else{
     Serial.println("Error");
   }
-  
+}
+void ukazText(){
+  if(text.length()<=16){
+    lcd.setCursor(0,1);
+    lcd.print(text);
+  }
 }
