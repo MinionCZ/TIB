@@ -1,121 +1,55 @@
-# TIB
-#include <LiquidCrystal.h>
-#define podsviceni 7
-#define potenciometr A0
-LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
-long posledniMillis = 0;
-struct Hodiny {
-  byte hodina;
-  byte minuta;
-  byte sekunda;
-} cas;
-
+#define ser 13
+#define rclk 12
+#define srclk 11
+bool online = true;
+bool numbers [10][7] = {
+  {1, 1, 1, 1, 1, 1, 0}, //0
+  {0, 1, 1, 0, 0, 0, 0}, //1
+  {1, 1, 0, 1, 1, 1, 0}, //2
+  {1, 1, 1, 1, 0, 1, 0}, //3
+  {0, 1, 1, 0, 0, 1, 1}, //4
+  {1, 0, 1, 1, 0, 1, 1}, //5
+  {1, 0, 1, 1, 1, 1, 1}, //6
+  {1, 1, 1, 0, 0, 0, 0}, //7
+  {1, 1, 1, 1, 1, 1, 1}, //8
+  {1, 1, 1, 1, 0, 1, 1} //9
+};
+bool packet [32];
 void setup() {
-  Serial.begin(115200);
-  pinMode(7, OUTPUT);
-  lcd.begin(16, 2);
-  cas.hodina = 17;
-  cas.minuta = 47;
-  cas.sekunda = 0;
-  digitalWrite(7, HIGH);
+  // put your setup code here, to run once:
+  pinMode(ser, OUTPUT);
+  pinMode(rclk, OUTPUT);
+  pinMode(srclk, OUTPUT);
+  for (int i = 0; i < 32; i++) {
+    packet[i] = false;
+  }
 }
 
 void loop() {
-  lcd.setCursor(3, 0);
-  lcd.print(cas.hodina);
-  lcd.print(":");
-  lcd.print(cas.minuta);
-  lcd.print(":");
-  lcd.print(cas.sekunda);
-  tik();
-  nastaveni();
-  delay(1);
+  // put your main code here, to run repeatedly:
+  zobraz("1234");
+  delay(1000);
 }
-void tik() {
-  if (millis() - posledniMillis >= 1000) {
-    posledniMillis = millis();
-    cas.sekunda++;
-    if (cas.sekunda == 60) {
-      cas.minuta++;
-      cas.sekunda = 0;
-      if (cas.minuta == 60) {
-        cas.minuta = 0;
-        cas.hodina++;
-        if (cas.hodina == 24) {
-          cas.hodina = 0;
-        }
-      }
-    }
-  }
-}
-void nastaveni() {
-  if (Serial.available() == 0) {
+void zobraz(String cislo) {
+  if (cislo.length() > 4) {
     return;
   }
-  String s = "";
-  while (Serial.available() > 0) {
-    s += (char) Serial.read();
-  }
-  int vysledek = over(s);
-  switch (vysledek) {
-    case -1:
-      Serial.println("Error");
-      return;
-    case 1:
-      // to do
-      break;
-    case 2:
-      Serial.println(vratInfo(s));
-      break;
-    default:
-      break;
-  }
-
-}
-/*
-   param prikaz - textovy retezec od uzivatele
-   return pokud je prikaz nespravny -> -1
-          pokud je prikaz set -> 1
-          pokud je prikaz get -> 2
-*/
-int over(String prikaz) {
-  if (prikaz.length() >= 3) {
-    String substr = prikaz.substring(0, 3);
-    if (substr.equals("set")) {
-      return 1;
-    } else if (substr.equals("get")) {
-      return 2;
-    } else {
-      return -1;
+  int pocitadlo = 0;
+  for (int i = 0; i < cislo.length(); i++) {
+    char ch = cislo.charAt(i);
+    int cifra = (int)ch - 48;
+    for (int j = 0; j < 7; j++) {
+      packet[pocitadlo] = numbers[cifra][j];
+      pocitadlo++;
     }
-  } else {
-    return -1;
+    packet[pocitadlo] = false;
+    pocitadlo++;
   }
-}
-/*
-   param prikaz - string co se ma udelat
-   return String -> pokud je prikaz time -> cas
-                 -> pokud je prikaz text -> text
-                 -> pokud neco jineho -> error
-*/
-
-String vratInfo(String prikaz) {
-  String substr = prikaz.substring(3);
-  if (substr.length() != 4) {
-    return "Error";
+  digitalWrite(rclk, LOW);
+  for (int i = 31; i >=0; i--) {
+    digitalWrite(srclk, LOW);
+    digitalWrite(ser, !packet[i]);
+    digitalWrite(srclk, HIGH);
   }
-  if (substr.equals("text")) {
-    return "Donde esta la biblioteca?";
-  } else if (substr.equals("time")) {
-    String tim = "";
-    tim += cas.hodina;
-    tim += ":";
-    tim += cas.minuta;
-    tim += ":";
-    tim += cas.sekunda;
-    return tim;
-  } else {
-    return "Error";
-  }
-
+  digitalWrite(rclk, HIGH);
 }
