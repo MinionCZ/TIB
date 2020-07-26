@@ -1,1 +1,1 @@
-https://skribbl.io/?hPa2RMWh1QaU
+Repozitář pro příměstský tábor
